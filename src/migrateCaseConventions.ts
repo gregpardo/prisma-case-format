@@ -1,8 +1,12 @@
-
-export function migrateCaseConventions(file_contents: string, tableCaseConvention: CaseChange, fieldCaseConvention: CaseChange): [string?, Error?] {
+export function migrateCaseConventions(
+  fileContents: string,
+  tableCaseConvention: CaseChange,
+  fieldCaseConvention: CaseChange,
+  tableInflectionConvention: InflectionChange
+): [string?, Error?] {
   const MODEL_TOKEN = 'model';
   const END_MODEL_TOKEN = '}';
-  const lines = file_contents.split('\n');
+  const lines = fileContents.split('\n');
   const [model_bounds, model_bounds_error] = getModelBounds(lines);
   if (model_bounds_error) {
     return [, model_bounds_error];
@@ -49,9 +53,9 @@ export function migrateCaseConventions(file_contents: string, tableCaseConventio
       try {
         const model_declaration_line = MODEL_DECLARATION_REGEX.exec(lines[start]);
         const model_name = model_declaration_line!.groups!['model'];
-        if (tableCaseConvention(model_name) !== model_name) {
+        if (tableInflectionConvention(tableCaseConvention(model_name)) !== model_name) {
           const map_model_line = `  @@map("${model_name}")`;
-          lines[start] = transformDeclarationName(lines[start], model_name, tableCaseConvention);
+          lines[start] = transformDeclarationName(lines[start], model_name, tableCaseConvention, tableInflectionConvention);
           lines.splice(start + 1, 0, map_model_line);
           offset += 1;
         }
@@ -122,12 +126,17 @@ export function migrateCaseConventions(file_contents: string, tableCaseConventio
     return [lines,];
   }
 
-  function transformDeclarationName(declaration_line: string, declaration_name: string, tableCaseConvention: CaseChange): string {
-    return declaration_line.replace(declaration_name, tableCaseConvention(declaration_name));
+  function transformDeclarationName(declaration_line: string, declaration_name: string, tableCaseConvention: CaseChange, tableInflectionConvention: InflectionChange): string {
+    let transformedName = tableCaseConvention(declaration_name);
+    if (tableInflectionConvention) {
+      transformedName = tableInflectionConvention(transformedName);
+    }
+    return declaration_line.replace(declaration_name, transformedName);
   }
 }
 
 export type CaseChange = (input: string) => string;
+export type InflectionChange = (input: string) => string;
 
 export function isPrimitive(field_type: string) {
   field_type = field_type.replace('[]', '').replace('?', '').replace(/("\w+")/, '');
