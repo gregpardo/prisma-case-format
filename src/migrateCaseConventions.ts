@@ -43,7 +43,9 @@ export function migrateCaseConventions(
   function reshapeModels(lines: string[]): [string[]?, Error?] {
     const MODEL_DECLARATION_REGEX = /^\s*model\s+(?<model>\w+)\s*\{\s*/;
     const FIELD_DECLARATION_REGEX = /^(\s*)(?<field>\w+)(\s+)(?<type>[\w+]+)(?<complications>[\[\]\?]*)(\s+.*\s*)?/;
-    const RELATION_ANNOTATION_REGEX = /(@relation\("?\w*"?,?\s*fields: \[)(?<fields>.*)(\],\s*references: \[)(?<references>.*)(\]\))/;
+    const RELATION_NAME_REGEX = /(@relation\(")(.+?)(")/;
+    const RELATION_FIELDS_ANNOTATION_REGEX = /(fields: \[)(.+?)(])/;
+    const RELATION_REFERENCES_ANNOTATION_REGEX = /(references: \[)(.+?)(])/;
     const TABLE_INDEX_REGEX = /\@\@index\((?<fields>\[[\w\s,]+\])/;
     const TABLE_UNIQUE_REGEX = /\@\@unique\((?<fields>\[[\w\s,]+\])/;
     const TABLE_ID_REGEX = /\@\@id\((?<fields>\[[\w\s,]+\])/;
@@ -75,25 +77,22 @@ export function migrateCaseConventions(
           }
           if (!isPrimitive(field_type)) {
             // this may have bugs...
-            field_type = tableCaseConvention(field_type);
+            field_type = tableInflectionConvention(tableCaseConvention(field_type));
           }
           lines[i] = lines[i].replace(search_term, [chunk0, field_name, chunk2, field_type, chunk4, chunk5,].join(''));
           lines[i] += map_field_fragment;
         }
-        const relation_annotation_line = RELATION_ANNOTATION_REGEX.exec(lines[i]);
-        if (relation_annotation_line) {
-          const [search_term, chunk0, fields, chunk2, references, chunk4] = relation_annotation_line!;
-          const updated_fields = fields
-            .split(/,\s*/)
-            .map(fieldCaseConvention)
-            .join(', ');
-
-          const updated_references = references
-            .split(/,\s*/)
-            .map(fieldCaseConvention)
-            .join(', ');
-          lines[i] = lines[i].replace(search_term, [chunk0, updated_fields, chunk2, updated_references, chunk4].join(''));
-        }
+        [RELATION_NAME_REGEX, RELATION_FIELDS_ANNOTATION_REGEX, RELATION_REFERENCES_ANNOTATION_REGEX].forEach((regex) => {
+          const matches = regex.exec(lines[i]);
+          if (matches) {
+            const [search_term, chunk0, fields, chunk1] = matches;
+            const updated_fields = fields
+              .split(/,\s*/)
+              .map(fieldCaseConvention)
+              .join(', ');
+            lines[i] = lines[i].replace(search_term, [chunk0, updated_fields, chunk1].join(''));
+          }
+        });
         const table_unique_declaration_line = TABLE_UNIQUE_REGEX.exec(lines[i]);
         if (table_unique_declaration_line) {
           const field_names = table_unique_declaration_line!.groups!['fields'];
