@@ -13,6 +13,7 @@ Give your schema.prisma sane naming conventions
 Options:
   --file <file>             schema.prisma file location (default: "schema.prisma")
   --table-case <tableCase>  case convention for table names. allowable values: "pascal", "camel", "snake" (default: "pascal")
+  --table-inflection <tableInflection>  convention for singular or plural table names. allowable values: "singular", "plural", "leave" (default: "leave")
   --field-case <fieldCase>  case convention for field names. allowable values: "pascal", "camel", "snake" (default: "camel")
   -D, --dry-run             print changes to console, rather than back to file (default: false)
   -h, --help                display help for command
